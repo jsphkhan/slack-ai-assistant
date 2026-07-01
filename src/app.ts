@@ -25,8 +25,7 @@ app.use(async ({ payload, logger, next }) => {
     type: payload.type,
     subtype: "subtype" in payload ? payload.subtype : undefined,
     channelType: "channel_type" in payload ? payload.channel_type : undefined,
-    hasThreadTs: "thread_ts" in payload && Boolean(payload.thread_ts),
-    message: "message" in payload ? payload.message : undefined,
+    hasThreadTs: "thread_ts" in payload && Boolean(payload.thread_ts)
   });
 
   await next();

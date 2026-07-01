@@ -107,3 +107,7 @@ manifest.json                      Slack app configuration
 - Change the assistant system prompt in `src/listeners/assistant/index.ts`.
 - Add real business tools under `src/agent/tools/`.
 - Replace or extend `callLLM()` in `src/agent/llm-caller.ts` for retrieval, memory, or API integrations.
+
+## References
+- Slack Apps https://api.slack.com/apps
+- Slack AI Assistant doc https://docs.slack.dev/tools/bolt-js/tutorials/ai-assistant
