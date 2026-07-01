@@ -14,9 +14,22 @@
       "display_name": "Slack AI Assistant",
       "always_online": true
     },
-    "assistant_view": {
-      "assistant_description": "Ask questions, summarize context, and get guided help from an AI assistant.",
-      "suggested_prompts": []
+    "agent_view": {
+      "agent_description": "Ask questions, summarize context, and get guided help from an AI assistant.",
+      "suggested_prompts": [
+        {
+          "title": "Summarize this channel",
+          "message": "Summarize the current channel context."
+        },
+        {
+          "title": "Draft a reply",
+          "message": "Draft a concise reply for this discussion."
+        },
+        {
+          "title": "Roll dice",
+          "message": "Roll 2d6 and explain the result."
+        }
+      ]
     }
   },
   "oauth_config": {
@@ -37,6 +50,7 @@
     "event_subscriptions": {
       "bot_events": [
         "app_mention",
+        "app_home_opened",
         "assistant_thread_context_changed",
         "assistant_thread_started",
         "message.channels",
