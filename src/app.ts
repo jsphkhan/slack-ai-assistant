@@ -18,6 +18,8 @@ const app = new App({
   logLevel: LogLevel.INFO,
 });
 
+// Keep this middleware near the top so debugging event delivery is easy when
+// Slack changes the shape of Agent / Assistant events.
 app.use(async ({ payload, logger, next }) => {
   logger.info("slack payload received", {
     type: payload.type,
@@ -30,8 +32,12 @@ app.use(async ({ payload, logger, next }) => {
   await next();
 });
 
+// This still supports Slack's older Assistant thread events. The current
+// manifest uses agent_view, so root Agent panel messages are handled below.
 registerAssistantListeners(app);
 
+// In agent_view, Slack can open the app's Messages tab before any user prompt.
+// We log it as a lifecycle signal; responses are produced from message.im.
 app.event("app_home_opened", async ({ event, logger }) => {
   logger.info("app_home_opened received", {
     channel: event.channel,
@@ -40,7 +46,12 @@ app.event("app_home_opened", async ({ event, logger }) => {
   });
 });
 
+// Handles the current Slack Agent messaging experience. Root messages arrive as
+// message.im without thread_ts, so the older Assistant class does not handle
+// them; this direct listener is the active path for first user prompts.
 app.message(async ({ message, logger, say, sayStream, setStatus }) => {
+  // Only answer direct app messages. Channel mentions are handled separately
+  // below, and bot/subtype messages are ignored to avoid response loops.
   if (!("channel_type" in message) || message.channel_type !== "im") {
     return;
   }
@@ -73,6 +84,8 @@ app.message(async ({ message, logger, say, sayStream, setStatus }) => {
   try {
     await setStatus("thinking...");
 
+    // sayStream() binds OpenAI's streamed output to this Slack conversation.
+    // For root Agent messages, Bolt uses the user's message as the thread root.
     const streamer = sayStream();
     await callLLM(streamer, [
       {

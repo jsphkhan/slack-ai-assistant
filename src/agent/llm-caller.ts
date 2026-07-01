@@ -20,6 +20,8 @@ export async function callLLM(
 ): Promise<void> {
   const toolCalls: OpenAI.Responses.ResponseFunctionToolCall[] = [];
 
+  // The input already contains the Slack user's message and the system prompt.
+  // Streaming lets us forward text to Slack as soon as OpenAI produces it.
   const response = await openai.responses.create({
     model,
     input,
@@ -29,10 +31,14 @@ export async function callLLM(
   });
 
   for await (const event of response) {
+    // This is the core bridge from OpenAI back to Slack: every text delta is
+    // appended to the active Slack stream.
     if (event.type === "response.output_text.delta" && event.delta) {
       await streamer.append({ markdown_text: event.delta });
     }
 
+    // Function calls finish as structured output items. We collect them, show a
+    // Slack task update, then run the local tool after the first stream ends.
     if (
       event.type === "response.output_item.done" &&
       event.item.type === "function_call"
@@ -69,6 +75,8 @@ export async function callLLM(
     const args = JSON.parse(call.arguments) as RollDiceArgs;
     const result = rollDice(args);
 
+    // Feed the tool result back into OpenAI using the Responses API's expected
+    // function_call + function_call_output conversation shape.
     nextInput.push({
       id: call.id,
       call_id: call.call_id,
@@ -97,5 +105,7 @@ export async function callLLM(
     });
   }
 
+  // Ask OpenAI to continue now that tool outputs are available. The same Slack
+  // streamer is reused, so the final answer appears in the original response.
   await callLLM(streamer, nextInput);
 }

@@ -2,6 +2,8 @@ import { type App, Assistant } from "@slack/bolt";
 import { callLLM } from "../../agent/llm-caller.js";
 
 export function registerAssistantListeners(app: App): void {
+  // Legacy Assistant thread support. Slack's newer agent_view sends initial
+  // prompts through the direct message.im handler in src/app.ts.
   const assistant = new Assistant({
     threadStarted: async ({
       event,
@@ -82,6 +84,8 @@ export function registerAssistantListeners(app: App): void {
       await setStatus("thinking...");
 
       try {
+        // Threaded Assistant messages use the same OpenAI-to-Slack streaming
+        // bridge as the newer agent_view message handler.
         const streamer = sayStream();
         await callLLM(streamer, [
           {
