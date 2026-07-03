@@ -1,7 +1,7 @@
 {
   "display_information": {
     "name": "Slack AI Assistant",
-    "description": "A Bolt for JavaScript AI assistant powered by OpenAI",
+    "description": "A Slack AI Assistant for Bolt SDK & AI",
     "background_color": "#1d1c1d"
   },
   "features": {
