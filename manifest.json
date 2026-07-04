@@ -1,7 +1,7 @@
 {
   "display_information": {
     "name": "Slack AI Assistant",
-    "description": "A Slack AI Assistant for Bolt SDK & AI",
+    "description": "A Slack AI Assistant using Bolt SDK & AI",
     "background_color": "#1d1c1d"
   },
   "features": {
@@ -24,10 +24,6 @@
         {
           "title": "Draft a reply",
           "message": "Draft a concise reply for this discussion."
-        },
-        {
-          "title": "Roll dice",
-          "message": "Roll 2d6 and explain the result."
         }
       ]
     }
