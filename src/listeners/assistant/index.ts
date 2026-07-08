@@ -32,11 +32,7 @@ export function registerAssistantListeners(app: App): void {
           {
             title: "Draft a reply",
             message: "Draft a concise reply for this discussion.",
-          },
-          {
-            title: "Roll dice",
-            message: "Roll 2d6 and explain the result.",
-          },
+          }
         ],
       });
     },
@@ -84,6 +80,50 @@ export function registerAssistantListeners(app: App): void {
       await setStatus("thinking...");
 
       try {
+        const threadTs =
+          "thread_ts" in message && message.thread_ts ? message.thread_ts : message.ts;
+        const replies = await app.client.conversations.replies({
+          channel: message.channel,
+          ts: threadTs,
+          limit: 50,
+        });
+        const conversationHistory =
+          replies.messages?.map((threadMessage) => ({
+            ts: threadMessage.ts,
+            user: "user" in threadMessage ? threadMessage.user : undefined,
+            botId: "bot_id" in threadMessage ? threadMessage.bot_id : undefined,
+            text: "text" in threadMessage ? threadMessage.text : undefined,
+            subtype:
+              "subtype" in threadMessage ? threadMessage.subtype : undefined,
+          })) ?? [];
+        // logger.info("assistant thread conversation history", {
+        //   channel: message.channel,
+        //   threadTs,
+        //   count: conversationHistory.length,
+        //   messages: conversationHistory,
+        // });
+        const contextEntries = conversationHistory
+          .filter(
+            (threadMessage) =>
+              threadMessage.text &&
+              threadMessage.ts !== message.ts &&
+              threadMessage.subtype === undefined,
+          )
+          .slice(-10)
+          .map((threadMessage) => ({
+            speaker: threadMessage.botId !== undefined ? "assistant" : "user",
+            text: threadMessage.text,
+          }));
+        const contextBlock = contextEntries
+          .map((entry) => `${entry.speaker}: ${entry.text}`)
+          .join("\n");
+        logger.info("assistant LLM context prepared", {
+          channel: message.channel,
+          threadTs,
+          contextCount: contextEntries.length,
+          context: contextBlock,
+        });
+
         // Threaded Assistant messages use the same OpenAI-to-Slack streaming
         // bridge as the newer agent_view message handler.
         const streamer = sayStream();
@@ -93,6 +133,14 @@ export function registerAssistantListeners(app: App): void {
             content:
               "You are a concise Slack AI assistant. Answer clearly, ask for missing details when needed, and format responses for Slack markdown.",
           },
+          ...(contextBlock
+            ? [
+                {
+                  role: "system" as const,
+                  content: `Recent thread context (oldest to newest):\n${contextBlock}`,
+                },
+              ]
+            : []),
           {
             role: "user",
             content: text,

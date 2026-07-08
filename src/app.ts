@@ -18,18 +18,37 @@ const app = new App({
   logLevel: LogLevel.INFO,
 });
 
+/** 
+ * Temporary middleware to inspect incoming payloads and quickly 
+ * identify which Slack surface triggered them:
+*/
+// app.use(async ({ payload, logger, next }) => {
+//   logger.info("debug payload", {
+//     type: "type" in payload ? payload.type : undefined,
+//     subtype: "subtype" in payload ? payload.subtype : undefined,
+//     channelType: "channel_type" in payload ? payload.channel_type : undefined,
+//     channel: "channel" in payload ? payload.channel : undefined,
+//     threadTs: "thread_ts" in payload ? payload.thread_ts : undefined,
+//     ts: "ts" in payload ? payload.ts : undefined,
+//     user: "user" in payload ? payload.user : undefined,
+//     botId: "bot_id" in payload ? payload.bot_id : undefined,
+//     text: "text" in payload ? payload.text : undefined,
+//   });
+//   await next();
+// });
+
 // Keep this middleware near the top so debugging event delivery is easy when
 // Slack changes the shape of Agent / Assistant events.
-app.use(async ({ payload, logger, next }) => {
-  logger.info("slack payload received", {
-    type: payload.type,
-    subtype: "subtype" in payload ? payload.subtype : undefined,
-    channelType: "channel_type" in payload ? payload.channel_type : undefined,
-    hasThreadTs: "thread_ts" in payload && Boolean(payload.thread_ts)
-  });
+// app.use(async ({ payload, logger, next }) => {
+//   logger.info("slack payload received", {
+//     type: payload.type,
+//     subtype: "subtype" in payload ? payload.subtype : undefined,
+//     channelType: "channel_type" in payload ? payload.channel_type : undefined,
+//     hasThreadTs: "thread_ts" in payload && Boolean(payload.thread_ts)
+//   });
 
-  await next();
-});
+//   await next();
+// });
 
 // This still supports Slack's older Assistant thread events. The current
 // manifest uses agent_view, so root Agent panel messages are handled below.
@@ -37,13 +56,13 @@ registerAssistantListeners(app);
 
 // In agent_view, Slack can open the app's Messages tab before any user prompt.
 // We log it as a lifecycle signal; responses are produced from message.im.
-app.event("app_home_opened", async ({ event, logger }) => {
-  logger.info("app_home_opened received", {
-    channel: event.channel,
-    tab: event.tab,
-    user: event.user,
-  });
-});
+// app.event("app_home_opened", async ({ event, logger }) => {
+//   logger.info("app_home_opened received", {
+//     channel: event.channel,
+//     tab: event.tab,
+//     user: event.user,
+//   });
+// });
 
 // Handles the current Slack Agent messaging experience. Root messages arrive as
 // message.im without thread_ts, so the older Assistant class does not handle
@@ -109,6 +128,12 @@ app.message(async ({ message, logger, say, sayStream, setStatus }) => {
   }
 });
 
+/** 
+ * Handles app mentions.
+ * FOr example if the user says "@slack-ai-assistant" in a channel, this event will be triggered.
+ * We then respond with a message that explains that the assistant is an agent and how to open it.
+ * This is a fallback for when the user does not know how to use the assistant.
+*/
 app.event("app_mention", async ({ event, say, logger }) => {
   const text = event.text.replace(/<@[^>]+>/g, "").trim();
   const threadTs = event.thread_ts ?? event.ts;
@@ -121,7 +146,7 @@ app.event("app_mention", async ({ event, say, logger }) => {
 
   await say({
     thread_ts: threadTs,
-    text: "Open the assistant from Slack's Agents panel for the full AI assistant experience.",
+    text: "Slack AI Assistant is an agent. So you can communicate with it via the Agents panel. Open the assistant from Slack's Agents panel for the full AI assistant experience. See to your top right for the Agents panel.",
   });
 });
 
